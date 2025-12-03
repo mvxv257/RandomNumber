@@ -58,7 +58,7 @@
             margin-bottom: 15px;
         }
 
-        /* --- Styles for the rolling animation area --- */
+        /* --- Animation Area Styles --- */
         #result-container {
             display: flex;
             justify-content: center;
@@ -75,22 +75,26 @@
             font-size: 8em;
             color: #d32f2f; 
             font-weight: bold;
-            line-height: 1.1; /* Height of one digit */
+            line-height: 1.1; /* 1.1em height for each digit */
             width: 0.8em; 
             text-align: center;
-            height: 1.1em; 
+            height: 1.1em; /* Must match line-height */
             overflow: hidden;
+            /* Added to ensure animation smoothness */
+            will-change: transform; 
         }
         
         .roll-animation span {
             display: block;
-            height: 1.1em; 
+            height: 1.1em; /* Must match line-height */
             text-align: center;
         }
 
         .roll-animation {
             /* We use transform 0s initially to stop any unwanted transitions */
             transition: transform 0s; 
+            /* Added will-change for performance */
+            will-change: transform;
         }
 
         .stop-animation {
@@ -188,7 +192,6 @@
         const DIGIT_HEIGHT_EM = 1.1; 
         const ROLL_DURATION = 2000; 
         const DIGIT_STOP_DELAY = 200; 
-        const DIGIT_ROLL_LENGTH = 10; // Number of digits (0 through 9)
 
         let availableNumbers = [];
         let pickedNumbers = [];
@@ -199,9 +202,6 @@
         const drawButton = document.getElementById('drawButton');
         const statusMessage = document.getElementById('statusMessage');
 
-        /**
-         * Initializes the array of available numbers and the digit slots.
-         */
         function initializeNumbers() {
             availableNumbers = [];
             for (let i = MIN_NUM; i <= MAX_NUM; i++) {
@@ -211,18 +211,12 @@
             updateDisplay(MIN_NUM); 
         }
 
-        /**
-         * Formats a number to be three digits (e.g., 1 -> '001').
-         * @param {number} num - The number to format.
-         * @returns {string} The three-digit formatted string.
-         */
         function formatNumber(num) {
             return String(num).padStart(DIGIT_COUNT, '0');
         }
 
         /**
          * Sets up the HTML structure for the rolling digits only once.
-         * @param {string} initialText - The initial number string (e.g., '001').
          */
         function setupDigitSlots(initialText) {
             resultContainer.innerHTML = '';
@@ -264,53 +258,52 @@
             const targetString = formatNumber(selectedNumber);
             const rollElements = document.querySelectorAll('.roll-animation');
             
-            // 1. Start the fast roll
+            // 1. Prepare for roll and reset transition
             rollElements.forEach(roll => {
-                // Remove the smooth transition class
                 roll.classList.remove('stop-animation'); 
-                // Set transition to 0s to reset any previous final stop quickly
                 roll.style.transition = 'transform 0s'; 
-                // Set transform to a large negative value to start rapid rolling visually
-                // Must be a multiple of the total digit height (10 * 1.1em = 11em)
-                roll.style.transform = 'translateY(-1100em)'; 
             });
 
-            // 2. Schedule the roll stop for each digit
-            for (let i = 0; i < DIGIT_COUNT; i++) {
-                setTimeout(() => {
-                    stopDigit(i, targetString[i]);
-                }, ROLL_DURATION + (i * DIGIT_STOP_DELAY));
-            }
+            // Use requestAnimationFrame to ensure the transition reset takes effect 
+            // before we apply the large transform that starts the visual roll.
+            requestAnimationFrame(() => {
+                
+                // 2. Start the fast, visual roll
+                rollElements.forEach(roll => {
+                    // Start the roll far off-screen to ensure motion is visible
+                    roll.style.transform = 'translateY(-1100em)'; 
+                });
 
-            // 3. Schedule the final update after all digits have stopped
+                // 3. Schedule the roll stop for each digit
+                for (let i = 0; i < DIGIT_COUNT; i++) {
+                    setTimeout(() => {
+                        stopDigit(i, targetString[i]);
+                    }, ROLL_DURATION + (i * DIGIT_STOP_DELAY));
+                }
+            });
+
+            // 4. Schedule the final update after all digits have stopped
             setTimeout(() => {
                 isDrawing = false;
-                updateSidebar(); // Update sidebar and status message
+                updateSidebar(); 
             }, ROLL_DURATION + (DIGIT_COUNT * DIGIT_STOP_DELAY) + 500); 
         }
 
         /**
          * Stops an individual digit on its target value.
-         * @param {number} index - The index of the digit slot (0, 1, or 2).
-         * @param {string} targetDigit - The final digit character ('0' through '9').
          */
         function stopDigit(index, targetDigit) {
             const roll = document.querySelectorAll('.roll-animation')[index];
             const targetIndex = parseInt(targetDigit); 
             
-            // CORRECT CALCULATION: The desired offset is the target digit's value * its height (1.1em)
+            // The desired offset is the target digit's value * its height (1.1em)
             const offset = targetIndex * DIGIT_HEIGHT_EM; 
 
             // Enable the smooth transition and set the final position
             roll.classList.add('stop-animation');
-            // Ensure the transform uses the correct final offset to stop on the desired number
             roll.style.transform = `translateY(-${offset}em)`;
         }
 
-        /**
-         * Selects and removes a number from the available pool.
-         * @returns {number} The selected number.
-         */
         function drawRandomNumber() {
             if (availableNumbers.length === 0) return 0; 
             
@@ -321,11 +314,7 @@
             return selectedNumber;
         }
 
-        /**
-         * Updates the sidebar and checks the available number status.
-         */
         function updateSidebar() {
-            // Update status and button state
             if (availableNumbers.length === 0) {
                 drawButton.disabled = true;
                 statusMessage.textContent = 'All numbers have been picked!';
@@ -334,7 +323,6 @@
                 statusMessage.textContent = '';
             }
 
-            // Re-render the picked numbers list (sidebar)
             pickedNumbersList.innerHTML = ''; 
             const sortedPicked = [...pickedNumbers].sort((a, b) => a - b); 
 
@@ -345,18 +333,11 @@
             });
         }
         
-        /**
-         * Updates the display when initializing/resetting.
-         */
         function updateDisplay(initialNumber) {
             setupDigitSlots(formatNumber(initialNumber));
             updateSidebar();
         }
 
-
-        /**
-         * Resets the entire picker state.
-         */
         function resetPicker() {
             if (confirm("Are you sure you want to reset and clear all picked numbers?")) {
                 initializeNumbers();
@@ -364,7 +345,6 @@
             }
         }
 
-        // Initialize the numbers and set up the display when the page loads
         document.addEventListener('DOMContentLoaded', initializeNumbers);
     </script>
 </body>
