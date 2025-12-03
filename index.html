@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Randomizer</title>
+    <style>
+        /* CSS for the White Background and Red-Gold Accent Theme */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff; /* White background */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            width: 90%;
+            max-width: 1200px;
+            gap: 30px;
+        }
+
+        .main-content {
+            flex: 2;
+            padding: 30px;
+            background-color: #f8f8f8;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center; /* Center content in main box */
+        }
+
+        .sidebar {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        h1 {
+            color: #d32f2f; /* Deep Red accent for main title */
+            border-bottom: 3px solid #ffc107; /* Gold accent border */
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #ffc107; /* Gold accent for sidebar title */
+            border-bottom: 2px solid #d32f2f; /* Deep Red accent border */
+            padding-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        /* --- Styles for the rolling animation area --- */
+        #result-container {
+            display: flex;
+            justify-content: center;
+            margin: 40px 0 60px 0;
+            min-height: 120px;
+            border: 5px solid #ffc107; /* Gold border */
+            border-radius: 8px;
+            background-color: #fffaf0; /* Off-white/Cream background */
+            /* Add small gap between digits for better readability */
+            letter-spacing: 5px; 
+            padding-top: 10px; 
+        }
+
+        .digit-slot {
+            font-size: 8em;
+            color: #d32f2f; 
+            font-weight: bold;
+            line-height: 1.1; /* Height of one digit */
+            width: 0.8em; 
+            text-align: center;
+            height: 1.1em; 
+            overflow: hidden;
+        }
+        
+        /* The spans inside roll-animation must be block elements to stack vertically */
+        .roll-animation span {
+            display: block;
+            height: 1.1em; /* Ensure each span takes up the slot height */
+            text-align: center;
+        }
+
+        .roll-animation {
+            /* This is the element that holds the digits and moves up/down */
+            transition: transform 0s; 
+            /* Set a height of 11 * 1.1em (0-9 plus the initial digit) */
+        }
+
+        /* Class added during the final stop */
+        .stop-animation {
+            transition: transform 0.5s ease-out; 
+        }
+        /* ---------------------------------------------------- */
+
+        button {
+            display: block;
+            width: 80%;
+            max-width: 400px;
+            margin: 0 auto 15px auto;
+            padding: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        #drawButton {
+            background-color: #d32f2f; 
+            color: white;
+        }
+
+        #drawButton:hover {
+            background-color: #e53935; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #drawButton:disabled {
+            background-color: #bdbdbd;
+            cursor: not-allowed;
+            color: #757575;
+        }
+
+        #resetButton {
+            background-color: #ffc107; 
+            color: #333;
+        }
+
+        #pickedNumbers {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        #pickedNumbers li {
+            background-color: #ffe0b2; 
+            color: #d32f2f; 
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 1.1em;
+            border: 1px solid #ffb74d; 
+        }
+        
+        #statusMessage {
+            color: #d32f2f;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <h1>🎰 Randomizer</h1>
+            
+            <div id="result-container">
+                </div>
+            
+            <button id="drawButton" onclick="startDraw()">DRAW NUMBER</button>
+            <button id="resetButton" onclick="resetPicker()">RESET ALL NUMBERS</button>
+            
+            <div id="statusMessage"></div>
+        </div>
+
+        <div class="sidebar">
+            <h2>📜 Picked Numbers History</h2>
+            <ul id="pickedNumbers">
+                </ul>
+        </div>
+    </div>
+
+    <script>
+        const MIN_NUM = 1;
+        const MAX_NUM = 300;
+        const DIGIT_COUNT = 3;
+        const DIGIT_HEIGHT_EM = 1.1; // Must match line-height/height in CSS
+        const ROLL_DURATION = 2000; 
+        const DIGIT_STOP_DELAY = 200; 
+
+        let availableNumbers = [];
+        let pickedNumbers = [];
+        let isDrawing = false;
+
+        const resultContainer = document.getElementById('result-container');
+        const pickedNumbersList = document.getElementById('pickedNumbers');
+        const drawButton = document.getElementById('drawButton');
+        const statusMessage = document.getElementById('statusMessage');
+
+        /**
+         * Initializes the array of available numbers and the digit slots.
+         */
+        function initializeNumbers() {
+            availableNumbers = [];
+            for (let i = MIN_NUM; i <= MAX_NUM; i++) {
+                availableNumbers.push(i);
+            }
+            pickedNumbers = [];
+            // We set the display to the minimum number, '001', upon reset
+            updateDisplay(MIN_NUM); 
+        }
+
+        /**
+         * Formats a number to be three digits (e.g., 1 -> '001').
+         * @param {number} num - The number to format.
+         * @returns {string} The three-digit formatted string.
+         */
+        function formatNumber(num) {
+            return String(num).padStart(DIGIT_COUNT, '0');
+        }
+
+        /**
+         * Sets up the HTML structure for the rolling digits only once.
+         * @param {string} initialText - The initial number string (e.g., '001').
+         */
+        function setupDigitSlots(initialText) {
+            resultContainer.innerHTML = '';
+            for (let i = 0; i < DIGIT_COUNT; i++) {
+                const digitSlot = document.createElement('div');
+                digitSlot.className = 'digit-slot';
+
+                const rollAnimation = document.createElement('div');
+                rollAnimation.className = 'roll-animation';
+                
+                // Create digits 0-9 for rolling
+                for (let j = 0; j <= 9; j++) {
+                    const span = document.createElement('span');
+                    span.textContent = j;
+                    rollAnimation.appendChild(span);
+                }
+                // NOTE: We don't need to append an extra initial digit span.
+                // We use the transform property to show the initial digit.
+                
+                digitSlot.appendChild(rollAnimation);
+                resultContainer.appendChild(digitSlot);
+
+                // Set initial position to show the correct starting digit 
+                const initialDigit = parseInt(initialText[i]);
+                const offset = initialDigit * DIGIT_HEIGHT_EM; 
+                rollAnimation.style.transform = `translateY(-${offset}em)`;
+            }
+        }
+
+        /**
+         * Starts the drawing process, including the rolling animation.
+         */
+        function startDraw() {
+            if (isDrawing || availableNumbers.length === 0) return;
+            
+            isDrawing = true;
+            drawButton.disabled = true;
+            statusMessage.textContent = '...Rolling...';
+
+            const selectedNumber = drawRandomNumber();
+            const targetString = formatNumber(selectedNumber);
+            const rollElements = document.querySelectorAll('.roll-animation');
+            
+            // 1. Start the fast roll
+            rollElements.forEach(roll => {
+                // Remove the smooth transition class
+                roll.classList.remove('stop-animation'); 
+                // Set transition to 0s to reset any previous final stop quickly
+                roll.style.transition = 'transform 0s'; 
+                // Set transform to a large negative value to start rapid rolling visually
+                // We use a large number divisible by 1.1em * 10 digits (11em) for smoothness
+                roll.style.transform = 'translateY(-1100em)'; 
+            });
+
+            // 2. Schedule the roll stop for each digit
+            for (let i = 0; i < DIGIT_COUNT; i++) {
+                setTimeout(() => {
+                    stopDigit(i, targetString[i]);
+                }, ROLL_DURATION + (i * DIGIT_STOP_DELAY));
+            }
+
+            // 3. Schedule the final update after all digits have stopped
+            setTimeout(() => {
+                isDrawing = false;
+                updateSidebar(); // Only update sidebar and status message
+            }, ROLL_DURATION + (DIGIT_COUNT * DIGIT_STOP_DELAY) + 500); 
+        }
+
+        /**
+         * Stops an individual digit on its target value.
+         * @param {number} index - The index of the digit slot (0, 1, or 2).
+         * @param {string} targetDigit - The final digit character ('0' through '9').
+         */
+        function stopDigit(index, targetDigit) {
+            const roll = document.querySelectorAll('.roll-animation')[index];
+            const targetIndex = parseInt(targetDigit); 
+            
+            // Calculate the position required to show the target digit.
+            const offset = targetIndex * DIGIT_HEIGHT_EM; 
+
+            // Enable the smooth transition and set the final position
+            roll.classList.add('stop-animation');
+            roll.style.transform = `translateY(-${offset}em)`;
+        }
+
+        /**
+         * Selects and removes a number from the available pool.
+         * @returns {number} The selected number.
+         */
+        function drawRandomNumber() {
+            if (availableNumbers.length === 0) return 0; 
+            
+            const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+            const selectedNumber = availableNumbers[randomIndex];
+            availableNumbers.splice(randomIndex, 1); 
+            pickedNumbers.push(selectedNumber);
+            return selectedNumber;
+        }
+
+        /**
+         * Updates the sidebar and checks the available number status.
+         */
+        function updateSidebar() {
+            // Update status and button state
+            if (availableNumbers.length === 0) {
+                drawButton.disabled = true;
+                statusMessage.textContent = 'All numbers have been picked!';
+            } else {
+                drawButton.disabled = false;
+                statusMessage.textContent = '';
+            }
+
+            // Re-render the picked numbers list (sidebar)
+            pickedNumbersList.innerHTML = ''; 
+            const sortedPicked = [...pickedNumbers].sort((a, b) => a - b); 
+
+            sortedPicked.forEach(number => {
+                const li = document.createElement('li');
+                li.textContent = formatNumber(number);
+                pickedNumbersList.appendChild(li);
+            });
+        }
+        
+        /**
+         * Updates the display when initializing/resetting.
+         * We only call setupDigitSlots once at initialization.
+         */
+        function updateDisplay(initialNumber) {
+            setupDigitSlots(formatNumber(initialNumber));
+            updateSidebar();
+        }
+
+
+        /**
+         * Resets the entire picker state.
+         */
+        function resetPicker() {
+            if (confirm("Are you sure you want to reset and clear all picked numbers?")) {
+                initializeNumbers();
+                statusMessage.textContent = '';
+            }
+        }
+
+        // Initialize the numbers and set up the display when the page loads
+        document.addEventListener('DOMContentLoaded', initializeNumbers);
+    </script>
+</body>
+</html>
