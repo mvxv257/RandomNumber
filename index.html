@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Number Picker</title>
+    <style>
+        /* CSS for the White Background and Red-Gold Accent Theme */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff; /* White background */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            width: 90%;
+            max-width: 1200px;
+            gap: 30px;
+        }
+
+        .main-content {
+            flex: 2;
+            padding: 30px;
+            background-color: #f8f8f8;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        h1 {
+            color: #d32f2f; /* Deep Red accent for main title */
+            border-bottom: 3px solid #ffc107; /* Gold accent border */
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #ffc107; /* Gold accent for sidebar title */
+            border-bottom: 2px solid #d32f2f; /* Deep Red accent border */
+            padding-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        #result {
+            font-size: 8em;
+            text-align: center;
+            margin: 40px 0;
+            color: #d32f2f; /* Deep Red for the result number */
+            font-weight: bold;
+            min-height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 5px solid #ffc107; /* Gold border */
+            border-radius: 8px;
+            background-color: #fffaf0; /* Off-white/Cream background */
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        #drawButton {
+            background-color: #d32f2f; /* Deep Red button */
+            color: white;
+        }
+
+        #drawButton:hover {
+            background-color: #e53935; /* Lighter Red on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #drawButton:disabled {
+            background-color: #bdbdbd;
+            cursor: not-allowed;
+            color: #757575;
+        }
+
+        #resetButton {
+            background-color: #ffc107; /* Gold button */
+            color: #333;
+        }
+
+        #resetButton:hover {
+            background-color: #ffca28; /* Lighter Gold on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #pickedNumbers {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        #pickedNumbers li {
+            background-color: #ffe0b2; /* Light Gold background for numbers */
+            color: #d32f2f; /* Red text for numbers */
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 1.1em;
+            border: 1px solid #ffb74d; /* Medium Gold border */
+        }
+
+        .remaining-count {
+            margin-top: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <h1>🎲 Random Number Picker (001 - 300)</h1>
+            
+            <div id="result">---</div>
+            
+            <button id="drawButton" onclick="drawNumber()">DRAW NUMBER</button>
+            <button id="resetButton" onclick="resetPicker()">RESET ALL NUMBERS</button>
+            
+            <div class="remaining-count">
+                Numbers Remaining: <span id="remainingCount">300</span>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <h2>📜 Picked Numbers History</h2>
+            <ul id="pickedNumbers">
+                </ul>
+        </div>
+    </div>
+
+    <script>
+        const MIN_NUM = 1;
+        const MAX_NUM = 300;
+        let availableNumbers = [];
+        let pickedNumbers = [];
+
+        const resultElement = document.getElementById('result');
+        const pickedNumbersList = document.getElementById('pickedNumbers');
+        const drawButton = document.getElementById('drawButton');
+        const remainingCountSpan = document.getElementById('remainingCount');
+
+        /**
+         * Initializes the array of available numbers from MIN_NUM to MAX_NUM.
+         */
+        function initializeNumbers() {
+            availableNumbers = [];
+            for (let i = MIN_NUM; i <= MAX_NUM; i++) {
+                availableNumbers.push(i);
+            }
+            pickedNumbers = [];
+            updateDisplay();
+        }
+
+        /**
+         * Draws a random number from the available pool.
+         */
+        function drawNumber() {
+            if (availableNumbers.length === 0) {
+                resultElement.textContent = "DONE";
+                drawButton.disabled = true;
+                alert("All numbers have been picked! Please reset the list.");
+                return;
+            }
+
+            // 1. Pick a random index
+            const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+            
+            // 2. Get the selected number
+            const selectedNumber = availableNumbers[randomIndex];
+            
+            // 3. Remove the number from the available pool
+            // .splice() removes the number and returns an array of removed elements
+            availableNumbers.splice(randomIndex, 1); 
+            
+            // 4. Add the number to the picked history
+            pickedNumbers.push(selectedNumber);
+            
+            // 5. Update the site display
+            updateDisplay(selectedNumber);
+        }
+
+        /**
+         * Formats a number to be three digits (e.g., 1 -> '001', 12 -> '012', 123 -> '123').
+         * @param {number} num - The number to format.
+         * @returns {string} The three-digit formatted string.
+         */
+        function formatNumber(num) {
+            return String(num).padStart(3, '0');
+        }
+
+        /**
+         * Updates the main display and the sidebar list.
+         * @param {number} [lastPicked=null] - The last number drawn, if any.
+         */
+        function updateDisplay(lastPicked = null) {
+            // Update the main result
+            if (lastPicked !== null) {
+                resultElement.textContent = formatNumber(lastPicked);
+            } else {
+                resultElement.textContent = "---";
+            }
+
+            // Update the remaining count
+            remainingCountSpan.textContent = availableNumbers.length;
+            
+            // Re-render the picked numbers list (sidebar)
+            pickedNumbersList.innerHTML = ''; // Clear previous list items
+
+            // Sort picked numbers for a clean history display
+            const sortedPicked = [...pickedNumbers].sort((a, b) => a - b); 
+
+            sortedPicked.forEach(number => {
+                const li = document.createElement('li');
+                li.textContent = formatNumber(number);
+                pickedNumbersList.appendChild(li);
+            });
+
+            // Disable button if no numbers are left
+            if (availableNumbers.length === 0) {
+                drawButton.disabled = true;
+                resultElement.textContent = "DONE";
+            } else {
+                drawButton.disabled = false;
+            }
+        }
+
+        /**
+         * Resets the entire picker state.
+         */
+        function resetPicker() {
+            if (confirm("Are you sure you want to reset and clear all picked numbers?")) {
+                initializeNumbers();
+            }
+        }
+
+        // Initialize the numbers when the page loads
+        document.addEventListener('DOMContentLoaded', initializeNumbers);
+    </script>
+</body>
+</html>
