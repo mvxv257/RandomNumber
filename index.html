@@ -30,7 +30,7 @@
             background-color: #f8f8f8;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center; /* Center content in main box */
+            text-align: center; 
         }
 
         .sidebar {
@@ -44,15 +44,15 @@
         }
 
         h1 {
-            color: #d32f2f; /* Deep Red accent for main title */
-            border-bottom: 3px solid #ffc107; /* Gold accent border */
+            color: #d32f2f;
+            border-bottom: 3px solid #ffc107;
             padding-bottom: 10px;
             margin-bottom: 30px;
         }
 
         h2 {
-            color: #ffc107; /* Gold accent for sidebar title */
-            border-bottom: 2px solid #d32f2f; /* Deep Red accent border */
+            color: #ffc107;
+            border-bottom: 2px solid #d32f2f;
             padding-bottom: 5px;
             margin-top: 0;
             margin-bottom: 15px;
@@ -64,10 +64,9 @@
             justify-content: center;
             margin: 40px 0 60px 0;
             min-height: 120px;
-            border: 5px solid #ffc107; /* Gold border */
+            border: 5px solid #ffc107;
             border-radius: 8px;
-            background-color: #fffaf0; /* Off-white/Cream background */
-            /* Add small gap between digits for better readability */
+            background-color: #fffaf0;
             letter-spacing: 5px; 
             padding-top: 10px; 
         }
@@ -83,21 +82,19 @@
             overflow: hidden;
         }
         
-        /* The spans inside roll-animation must be block elements to stack vertically */
         .roll-animation span {
             display: block;
-            height: 1.1em; /* Ensure each span takes up the slot height */
+            height: 1.1em; 
             text-align: center;
         }
 
         .roll-animation {
-            /* This is the element that holds the digits and moves up/down */
+            /* We use transform 0s initially to stop any unwanted transitions */
             transition: transform 0s; 
-            /* Set a height of 11 * 1.1em (0-9 plus the initial digit) */
         }
 
-        /* Class added during the final stop */
         .stop-animation {
+            /* This is the smooth stop transition */
             transition: transform 0.5s ease-out; 
         }
         /* ---------------------------------------------------- */
@@ -188,9 +185,10 @@
         const MIN_NUM = 1;
         const MAX_NUM = 300;
         const DIGIT_COUNT = 3;
-        const DIGIT_HEIGHT_EM = 1.1; // Must match line-height/height in CSS
+        const DIGIT_HEIGHT_EM = 1.1; 
         const ROLL_DURATION = 2000; 
         const DIGIT_STOP_DELAY = 200; 
+        const DIGIT_ROLL_LENGTH = 10; // Number of digits (0 through 9)
 
         let availableNumbers = [];
         let pickedNumbers = [];
@@ -210,7 +208,6 @@
                 availableNumbers.push(i);
             }
             pickedNumbers = [];
-            // We set the display to the minimum number, '001', upon reset
             updateDisplay(MIN_NUM); 
         }
 
@@ -242,8 +239,6 @@
                     span.textContent = j;
                     rollAnimation.appendChild(span);
                 }
-                // NOTE: We don't need to append an extra initial digit span.
-                // We use the transform property to show the initial digit.
                 
                 digitSlot.appendChild(rollAnimation);
                 resultContainer.appendChild(digitSlot);
@@ -276,7 +271,7 @@
                 // Set transition to 0s to reset any previous final stop quickly
                 roll.style.transition = 'transform 0s'; 
                 // Set transform to a large negative value to start rapid rolling visually
-                // We use a large number divisible by 1.1em * 10 digits (11em) for smoothness
+                // Must be a multiple of the total digit height (10 * 1.1em = 11em)
                 roll.style.transform = 'translateY(-1100em)'; 
             });
 
@@ -290,7 +285,7 @@
             // 3. Schedule the final update after all digits have stopped
             setTimeout(() => {
                 isDrawing = false;
-                updateSidebar(); // Only update sidebar and status message
+                updateSidebar(); // Update sidebar and status message
             }, ROLL_DURATION + (DIGIT_COUNT * DIGIT_STOP_DELAY) + 500); 
         }
 
@@ -303,11 +298,12 @@
             const roll = document.querySelectorAll('.roll-animation')[index];
             const targetIndex = parseInt(targetDigit); 
             
-            // Calculate the position required to show the target digit.
+            // CORRECT CALCULATION: The desired offset is the target digit's value * its height (1.1em)
             const offset = targetIndex * DIGIT_HEIGHT_EM; 
 
             // Enable the smooth transition and set the final position
             roll.classList.add('stop-animation');
+            // Ensure the transform uses the correct final offset to stop on the desired number
             roll.style.transform = `translateY(-${offset}em)`;
         }
 
@@ -351,7 +347,6 @@
         
         /**
          * Updates the display when initializing/resetting.
-         * We only call setupDigitSlots once at initialization.
          */
         function updateDisplay(initialNumber) {
             setupDigitSlots(formatNumber(initialNumber));
