@@ -58,51 +58,30 @@
             margin-bottom: 15px;
         }
 
-        /* --- Animation Area Styles --- */
+        /* --- Number Display Styles --- */
         #result-container {
             display: flex;
             justify-content: center;
+            align-items: center; /* Center digits vertically */
             margin: 40px 0 60px 0;
-            min-height: 120px;
+            height: 120px; /* Fixed height based on 8em font size */
             border: 5px solid #ffc107;
             border-radius: 8px;
             background-color: #fffaf0;
-            letter-spacing: 5px; 
-            padding-top: 10px; 
-        }
-
-        .digit-slot {
             font-size: 8em;
-            color: #d32f2f; 
+            color: #d32f2f;
             font-weight: bold;
-            line-height: 1.1; /* 1.1em height for each digit */
-            width: 0.8em; 
+            letter-spacing: 5px; 
+        }
+
+        .digit-display {
+            width: 0.8em; /* Fixed width for digits */
             text-align: center;
-            height: 1.1em; /* Must match line-height */
-            overflow: hidden;
-            /* Added to ensure animation smoothness */
-            will-change: transform; 
-        }
-        
-        .roll-animation span {
-            display: block;
-            height: 1.1em; /* Must match line-height */
-            text-align: center;
+            /* Optional: Add a transition for a subtle fade effect when numbers change */
+            transition: color 0.1s ease-in-out; 
         }
 
-        .roll-animation {
-            /* We use transform 0s initially to stop any unwanted transitions */
-            transition: transform 0s; 
-            /* Added will-change for performance */
-            will-change: transform;
-        }
-
-        .stop-animation {
-            /* This is the smooth stop transition */
-            transition: transform 0.5s ease-out; 
-        }
-        /* ---------------------------------------------------- */
-
+        /* --- Button Styles --- */
         button {
             display: block;
             width: 80%;
@@ -122,12 +101,6 @@
             color: white;
         }
 
-        #drawButton:hover {
-            background-color: #e53935; 
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
         #drawButton:disabled {
             background-color: #bdbdbd;
             cursor: not-allowed;
@@ -139,6 +112,7 @@
             color: #333;
         }
 
+        /* --- Sidebar Styles --- */
         #pickedNumbers {
             list-style: none;
             padding: 0;
@@ -189,13 +163,14 @@
         const MIN_NUM = 1;
         const MAX_NUM = 300;
         const DIGIT_COUNT = 3;
-        const DIGIT_HEIGHT_EM = 1.1; 
-        const ROLL_DURATION = 2000; 
-        const DIGIT_STOP_DELAY = 200; 
+        const CYCLE_DURATION = 2000; // Time the cycling runs for
+        const DIGIT_STOP_DELAY = 300; // Delay between digits stopping
+        const CYCLE_SPEED = 50; // Milliseconds between random number changes
 
         let availableNumbers = [];
         let pickedNumbers = [];
         let isDrawing = false;
+        let cycleIntervals = []; // To hold the cycling timers
 
         const resultContainer = document.getElementById('result-container');
         const pickedNumbersList = document.getElementById('pickedNumbers');
@@ -208,6 +183,7 @@
                 availableNumbers.push(i);
             }
             pickedNumbers = [];
+            // Reset display to '001'
             updateDisplay(MIN_NUM); 
         }
 
@@ -216,92 +192,76 @@
         }
 
         /**
-         * Sets up the HTML structure for the rolling digits only once.
+         * Sets up the HTML structure for static digit display.
          */
-        function setupDigitSlots(initialText) {
+        function setupDigitDisplay(initialText) {
             resultContainer.innerHTML = '';
             for (let i = 0; i < DIGIT_COUNT; i++) {
-                const digitSlot = document.createElement('div');
-                digitSlot.className = 'digit-slot';
-
-                const rollAnimation = document.createElement('div');
-                rollAnimation.className = 'roll-animation';
-                
-                // Create digits 0-9 for rolling
-                for (let j = 0; j <= 9; j++) {
-                    const span = document.createElement('span');
-                    span.textContent = j;
-                    rollAnimation.appendChild(span);
-                }
-                
-                digitSlot.appendChild(rollAnimation);
-                resultContainer.appendChild(digitSlot);
-
-                // Set initial position to show the correct starting digit 
-                const initialDigit = parseInt(initialText[i]);
-                const offset = initialDigit * DIGIT_HEIGHT_EM; 
-                rollAnimation.style.transform = `translateY(-${offset}em)`;
+                const digitSpan = document.createElement('span');
+                digitSpan.className = 'digit-display';
+                digitSpan.id = `digit-${i}`;
+                digitSpan.textContent = initialText[i];
+                resultContainer.appendChild(digitSpan);
             }
+        }
+        
+        /**
+         * The core function that cycles a single digit randomly.
+         */
+        function startDigitCycling(index) {
+            const digitElement = document.getElementById(`digit-${index}`);
+            // Use a specific interval for each digit to control its cycling
+            const interval = setInterval(() => {
+                // Generate a random digit (0-9)
+                digitElement.textContent = Math.floor(Math.random() * 10);
+            }, CYCLE_SPEED);
+
+            cycleIntervals[index] = interval;
         }
 
         /**
-         * Starts the drawing process, including the rolling animation.
+         * Stops the cycling interval for a specific digit and locks its final value.
+         */
+        function stopDigitCycling(index, finalDigit) {
+            // Stop the cycling interval
+            clearInterval(cycleIntervals[index]);
+            
+            // Lock the digit to its final value
+            const digitElement = document.getElementById(`digit-${index}`);
+            digitElement.textContent = finalDigit;
+        }
+
+        /**
+         * Starts the drawing process, including the random cycling effect.
          */
         function startDraw() {
             if (isDrawing || availableNumbers.length === 0) return;
             
             isDrawing = true;
             drawButton.disabled = true;
-            statusMessage.textContent = '...Rolling...';
+            statusMessage.textContent = '...Drawing...';
+            cycleIntervals = []; // Clear old intervals
 
             const selectedNumber = drawRandomNumber();
             const targetString = formatNumber(selectedNumber);
-            const rollElements = document.querySelectorAll('.roll-animation');
             
-            // 1. Prepare for roll and reset transition
-            rollElements.forEach(roll => {
-                roll.classList.remove('stop-animation'); 
-                roll.style.transition = 'transform 0s'; 
-            });
+            // 1. Start cycling all three digits
+            for (let i = 0; i < DIGIT_COUNT; i++) {
+                startDigitCycling(i);
+            }
 
-            // Use requestAnimationFrame to ensure the transition reset takes effect 
-            // before we apply the large transform that starts the visual roll.
-            requestAnimationFrame(() => {
-                
-                // 2. Start the fast, visual roll
-                rollElements.forEach(roll => {
-                    // Start the roll far off-screen to ensure motion is visible
-                    roll.style.transform = 'translateY(-1100em)'; 
-                });
+            // 2. Schedule the staggered stop for each digit
+            for (let i = 0; i < DIGIT_COUNT; i++) {
+                setTimeout(() => {
+                    stopDigitCycling(i, targetString[i]);
+                }, CYCLE_DURATION + (i * DIGIT_STOP_DELAY));
+            }
 
-                // 3. Schedule the roll stop for each digit
-                for (let i = 0; i < DIGIT_COUNT; i++) {
-                    setTimeout(() => {
-                        stopDigit(i, targetString[i]);
-                    }, ROLL_DURATION + (i * DIGIT_STOP_DELAY));
-                }
-            });
-
-            // 4. Schedule the final update after all digits have stopped
+            // 3. Schedule the final update after all digits have stopped
             setTimeout(() => {
                 isDrawing = false;
                 updateSidebar(); 
-            }, ROLL_DURATION + (DIGIT_COUNT * DIGIT_STOP_DELAY) + 500); 
-        }
-
-        /**
-         * Stops an individual digit on its target value.
-         */
-        function stopDigit(index, targetDigit) {
-            const roll = document.querySelectorAll('.roll-animation')[index];
-            const targetIndex = parseInt(targetDigit); 
-            
-            // The desired offset is the target digit's value * its height (1.1em)
-            const offset = targetIndex * DIGIT_HEIGHT_EM; 
-
-            // Enable the smooth transition and set the final position
-            roll.classList.add('stop-animation');
-            roll.style.transform = `translateY(-${offset}em)`;
+            }, CYCLE_DURATION + (DIGIT_COUNT * DIGIT_STOP_DELAY) + 500); 
         }
 
         function drawRandomNumber() {
@@ -323,6 +283,7 @@
                 statusMessage.textContent = '';
             }
 
+            // Re-render the picked numbers list (sidebar)
             pickedNumbersList.innerHTML = ''; 
             const sortedPicked = [...pickedNumbers].sort((a, b) => a - b); 
 
@@ -334,7 +295,7 @@
         }
         
         function updateDisplay(initialNumber) {
-            setupDigitSlots(formatNumber(initialNumber));
+            setupDigitDisplay(formatNumber(initialNumber));
             updateSidebar();
         }
 
