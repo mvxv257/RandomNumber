@@ -17,54 +17,40 @@
             min-height: 100vh;
         }
 
+        /* Container is now the main vertical holder */
         .container {
             display: flex;
+            flex-direction: column; /* Stack elements vertically */
             width: 90%;
-            max-width: 1200px;
-            gap: 30px;
+            max-width: 1000px; /* Max width for the whole site */
+            gap: 20px;
         }
 
-        .main-content {
-            flex: 2;
+        /* --- Top Section: Randomizer and Buttons --- */
+        .top-section {
             padding: 30px;
             background-color: #f8f8f8;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center; 
-        }
-
-        .sidebar {
-            flex: 1;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            max-height: 80vh;
-            overflow-y: auto;
+            text-align: center;
         }
 
         h1 {
-            color: #d32f2f;
-            border-bottom: 3px solid #ffc107;
+            color: #d32f2f; /* Deep Red accent for main title */
+            font-size: 2.8em; /* Increased Header Size */
+            border-bottom: 3px solid #ffc107; /* Gold accent border */
             padding-bottom: 10px;
             margin-bottom: 30px;
         }
 
-        h2 {
-            color: #ffc107;
-            border-bottom: 2px solid #d32f2f;
-            padding-bottom: 5px;
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-
-        /* --- Number Display Styles --- */
+        /* --- Middle Box Styling (Taller and Centered) --- */
         #result-container {
             display: flex;
             justify-content: center;
             align-items: center; /* Center digits vertically */
-            margin: 40px 0 60px 0;
-            height: 120px; /* Fixed height based on 8em font size */
+            margin: 20px auto 40px auto;
+            width: 90%; /* Take up most of the available width */
+            height: 150px; /* Increased height */
             border: 5px solid #ffc107;
             border-radius: 8px;
             background-color: #fffaf0;
@@ -75,19 +61,20 @@
         }
 
         .digit-display {
-            width: 0.8em; /* Fixed width for digits */
+            width: 0.8em;
             text-align: center;
-            /* Optional: Add a transition for a subtle fade effect when numbers change */
-            transition: color 0.1s ease-in-out; 
         }
 
-        /* --- Button Styles --- */
+        /* Button Layout Adjustment */
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
         button {
-            display: block;
-            width: 80%;
-            max-width: 400px;
-            margin: 0 auto 15px auto;
-            padding: 15px;
+            padding: 15px 30px;
             font-size: 1.2em;
             font-weight: bold;
             border: none;
@@ -99,20 +86,33 @@
         #drawButton {
             background-color: #d32f2f; 
             color: white;
-        }
-
-        #drawButton:disabled {
-            background-color: #bdbdbd;
-            cursor: not-allowed;
-            color: #757575;
+            flex: 1; /* Allow button to stretch */
+            max-width: 250px;
         }
 
         #resetButton {
-            background-color: #ffc107; 
+            background-color: #ffc107; /* Gold button */
             color: #333;
+            flex: 1; /* Allow button to stretch */
+            max-width: 150px;
         }
 
-        /* --- Sidebar Styles --- */
+        /* --- Bottom Section: History --- */
+        .history-section {
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #ffc107; /* Gold accent for history title */
+            border-bottom: 2px solid #d32f2f; /* Deep Red accent border */
+            padding-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
         #pickedNumbers {
             list-style: none;
             padding: 0;
@@ -135,25 +135,28 @@
             color: #d32f2f;
             font-weight: bold;
             margin-top: 15px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="main-content">
+        <div class="top-section">
             <h1>🎰 Randomizer</h1>
             
             <div id="result-container">
                 </div>
             
-            <button id="drawButton" onclick="startDraw()">DRAW NUMBER</button>
-            <button id="resetButton" onclick="resetPicker()">RESET ALL NUMBERS</button>
+            <div class="button-group">
+                <button id="drawButton" onclick="startDraw()">DRAW NUMBER</button>
+                <button id="resetButton" onclick="resetPicker()">RESET</button>
+            </div>
             
             <div id="statusMessage"></div>
         </div>
 
-        <div class="sidebar">
-            <h2>📜 Picked Numbers History</h2>
+        <div class="history-section">
+            <h2>📜 Recent Numbers</h2>
             <ul id="pickedNumbers">
                 </ul>
         </div>
@@ -163,14 +166,14 @@
         const MIN_NUM = 1;
         const MAX_NUM = 300;
         const DIGIT_COUNT = 3;
-        const CYCLE_DURATION = 2000; // Time the cycling runs for
-        const DIGIT_STOP_DELAY = 300; // Delay between digits stopping
-        const CYCLE_SPEED = 50; // Milliseconds between random number changes
+        const CYCLE_DURATION = 2000;
+        const DIGIT_STOP_DELAY = 300;
+        const CYCLE_SPEED = 50;
 
         let availableNumbers = [];
         let pickedNumbers = [];
         let isDrawing = false;
-        let cycleIntervals = []; // To hold the cycling timers
+        let cycleIntervals = [];
 
         const resultContainer = document.getElementById('result-container');
         const pickedNumbersList = document.getElementById('pickedNumbers');
@@ -183,7 +186,6 @@
                 availableNumbers.push(i);
             }
             pickedNumbers = [];
-            // Reset display to '001'
             updateDisplay(MIN_NUM); 
         }
 
@@ -191,9 +193,6 @@
             return String(num).padStart(DIGIT_COUNT, '0');
         }
 
-        /**
-         * Sets up the HTML structure for static digit display.
-         */
         function setupDigitDisplay(initialText) {
             resultContainer.innerHTML = '';
             for (let i = 0; i < DIGIT_COUNT; i++) {
@@ -205,42 +204,29 @@
             }
         }
         
-        /**
-         * The core function that cycles a single digit randomly.
-         */
         function startDigitCycling(index) {
             const digitElement = document.getElementById(`digit-${index}`);
-            // Use a specific interval for each digit to control its cycling
             const interval = setInterval(() => {
-                // Generate a random digit (0-9)
                 digitElement.textContent = Math.floor(Math.random() * 10);
             }, CYCLE_SPEED);
 
             cycleIntervals[index] = interval;
         }
 
-        /**
-         * Stops the cycling interval for a specific digit and locks its final value.
-         */
         function stopDigitCycling(index, finalDigit) {
-            // Stop the cycling interval
             clearInterval(cycleIntervals[index]);
             
-            // Lock the digit to its final value
             const digitElement = document.getElementById(`digit-${index}`);
             digitElement.textContent = finalDigit;
         }
 
-        /**
-         * Starts the drawing process, including the random cycling effect.
-         */
         function startDraw() {
             if (isDrawing || availableNumbers.length === 0) return;
             
             isDrawing = true;
             drawButton.disabled = true;
             statusMessage.textContent = '...Drawing...';
-            cycleIntervals = []; // Clear old intervals
+            cycleIntervals = [];
 
             const selectedNumber = drawRandomNumber();
             const targetString = formatNumber(selectedNumber);
@@ -283,7 +269,6 @@
                 statusMessage.textContent = '';
             }
 
-            // Re-render the picked numbers list (sidebar)
             pickedNumbersList.innerHTML = ''; 
             const sortedPicked = [...pickedNumbers].sort((a, b) => a - b); 
 
